@@ -1,0 +1,12 @@
+{
+    "your_env_here": {
+        "driver": "pg",
+        "user": "user",
+        "password": "password",
+        "host": "localhost",
+        "database": "db",
+        "port": "5432",
+        "ssl": "true",
+        "schema": "schema"
+    }
+}
