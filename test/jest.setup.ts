@@ -4,22 +4,23 @@ import { Container } from 'inversify';
 import { ICosmicConfig, CosmicConfig } from '../config/cosmic';
 import * as fs from 'fs';
 import * as path from 'path';
-import { BatchRepo } from '../packages/repository/BatchRepo';
-import { FakeBatchRepo } from '../packages/repository/FakeBatchRepo';
-import { IBatch, Batch, IOrderLine, OrderLine } from '../packages/domain/Batch';
-import { BatchService } from '../packages/service/Batch.service';
+import { IProductRepo } from '../lib/repository/ProductRepo';
+import { FakeProductRepo } from '../lib/repository/fakes/ProductRepo';
+import { IBatch, Batch, IOrderLine, OrderLine, IProduct } from '../lib/domain/Product';
+// import { BatchService } from '../packages/service/Batch.service';
 
 const container = new Container();
 container.bind<ICosmicConfig>('CosmicConfig').toConstantValue(
     bootstrapCosmicConfig()
 );
-container.bind<BatchRepo>(BatchRepo).to(FakeBatchRepo);
-container.bind<BatchService>(BatchService).to(BatchService);
-container.bind<IBatch[]>('fakeBatches').toConstantValue([]);
+container.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
+// container.bind<BatchService>(BatchService).to(BatchService);
+container.bind<IProduct[]>('fakeProducts').toConstantValue([]);
 
 interface IChance extends Chance.Chance {
     batch: (defaults?: object) => IBatch;
     orderLine: (defaults?: object) => IOrderLine;
+    product: (defaults?: object) => IProduct;
 }
 
 
@@ -46,7 +47,23 @@ chance.mixin({
             qty: chance.integer({ min: 1, max: 100 }),
         }, defaults);
         return new OrderLine(props.orderId, props.sku, props.qty);
-    }
+    },
+    product: function(defaults = {}): IProduct {
+        const props = Object.assign({
+            sku: chance.string(),
+            description: chance.string(),
+            batches: [],
+            version: 1,
+        }, defaults);
+        return {
+            sku: props.sku,
+            description: props.description,
+            batches: props.batches,
+            version: props.version,
+            allocate: jest.fn(),
+            canAllocate: jest.fn(),
+        };
+    },
 });
 
 export { container, chance };
@@ -56,5 +73,5 @@ function bootstrapCosmicConfig(): ICosmicConfig {
     const env = process.env.NODE_ENV || 'dev';
     const jsonConfig = fs.readFileSync(path.join(__dirname, '..', 'database.json'), 'utf8');
     const poolConfig = JSON.parse(jsonConfig)[env];
-    return new CosmicConfig(poolConfig, env);
+    return new CosmicConfig(poolConfig, env, 'optimistic');
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { CosmicTypescriptStack } from 'lib/cosmic-typescript-stack';
+import { CosmicTypescriptStack } from '../lib/cosmic-typescript-stack';
 
 const app = new cdk.App();
 new CosmicTypescriptStack(app, 'CosmicTypescriptStack', {

@@ -1,3 +1,37 @@
+export interface IProduct {
+    sku: string;
+    description: string;
+    batches: IBatch[];
+    version: number;
+
+    allocate(line: OrderLine): string;
+    canAllocate(line: OrderLine): boolean;
+}
+
+export class Product {
+
+    constructor(
+        public sku: string,
+        public description: string,
+        public batches: IBatch[],
+        public version: number
+    ) {}
+
+    allocate(line: OrderLine): string {
+        const batch = this.batches.find(b => b.canAllocate(line));
+        if (batch) {
+            batch.allocate(line);
+            return batch.reference;
+        }
+        throw new OutOfStockError(line.sku);
+    }
+
+    canAllocate(line: OrderLine): boolean {
+        return this.batches.some(b => b.canAllocate(line));
+    }
+}
+
+
 export interface IOrderLine {
     orderId: string;
     sku: string;
@@ -25,7 +59,7 @@ export interface IBatch {
     eta: Date;
 
     allocate(line: OrderLine): Batch;
-    can_allocate(line: OrderLine): boolean;
+    canAllocate(line: OrderLine): boolean;
     deallocate(line: OrderLine): Batch;
     __eq__(other: Batch): boolean;
     __hash__(): string;
@@ -51,13 +85,13 @@ export class Batch {
     }
 
     allocate(line: OrderLine): Batch {
-        if (this.can_allocate(line)) {
+        if (this.canAllocate(line)) {
             this.allocated.set(line.orderId, line);
         }
         return this;
     }
 
-    can_allocate(line: OrderLine): boolean {
+    canAllocate(line: OrderLine): boolean {
         return this.sku === line.sku && this.available_quantity >= line.qty;
     }
 
@@ -88,7 +122,7 @@ export class Batch {
 }
 
 export function allocate(batches: IBatch[], order: OrderLine): string {
-    const batch = batches.find(b => b.can_allocate(order));
+    const batch = batches.find(b => b.canAllocate(order));
     if (batch) {
         batch.allocate(order);
         return batch.reference;

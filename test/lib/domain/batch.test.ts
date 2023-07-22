@@ -1,5 +1,5 @@
 import { add } from 'date-fns';
-import { Batch, OrderLine, allocate, OutOfStockError } from '../../../packages/domain/Batch';
+import { Batch, OrderLine, allocate, OutOfStockError, Product } from '../../../lib/domain/Product';
 import { chance } from '../../jest.setup';
 
 describe('Batch Domain', () => {
@@ -25,22 +25,22 @@ describe('Batch Domain', () => {
     
             it('should can allocate if available greater than required', () => {
                 const batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
-                expect(batch.can_allocate(new OrderLine('order-ref', 'SMALL-TABLE', 10))).toBe(true);
+                expect(batch.canAllocate(new OrderLine('order-ref', 'SMALL-TABLE', 10))).toBe(true);
             });
     
             it('should cannot allocate if available smaller than required', () => {
                 const batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
-                expect(batch.can_allocate(new OrderLine('order-ref', 'SMALL-TABLE', 30))).toBe(false);
+                expect(batch.canAllocate(new OrderLine('order-ref', 'SMALL-TABLE', 30))).toBe(false);
             });
     
             it('should can allocate if available equal to required', () => {
                 const batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
-                expect(batch.can_allocate(new OrderLine('order-ref', 'SMALL-TABLE', 20))).toBe(true);
+                expect(batch.canAllocate(new OrderLine('order-ref', 'SMALL-TABLE', 20))).toBe(true);
             });
     
             it('should not allocate if skus do not match', () => {
                 const batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
-                expect(batch.can_allocate(new OrderLine('order-ref', 'LARGE-TABLE', 20))).toBe(false);
+                expect(batch.canAllocate(new OrderLine('order-ref', 'LARGE-TABLE', 20))).toBe(false);
             });
         });
     
@@ -124,6 +124,47 @@ describe('Batch Domain', () => {
             ];
             order = new OrderLine('order-ref', 'SMALL-TABLE', 30);
             expect(() => allocate(batches, order)).toThrow(OutOfStockError);
+        });
+    });
+
+    describe('Product Model', () => {
+        it('should import', () => {
+            expect(Product).toBeDefined();
+        });
+
+        describe('Allocate', () => {
+            let product: Product;
+            let order: OrderLine;
+            let batch: Batch;
+            beforeEach(() => {
+                batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
+                product = new Product('SMALL-TABLE', 'Small Table', [batch], 1);
+                order = new OrderLine('order-ref', 'SMALL-TABLE', 10);
+            });
+
+            it('should allocate to a batch reduces the available quantity', () => {
+                product.allocate(order);
+                expect(batch.available_quantity).toBe(10);
+            });
+    
+            it('should can allocate if available greater than required', () => {
+                expect(product.canAllocate(order)).toBe(true);
+            });
+    
+            it('should cannot allocate if available smaller than required', () => {
+                const order = new OrderLine('order-ref', 'SMALL-TABLE', 30);
+                expect(product.canAllocate(order)).toBe(false);
+            });
+    
+            it('should can allocate if available equal to required', () => {
+                const order = new OrderLine('order-ref', 'SMALL-TABLE', 20);
+                expect(product.canAllocate(order)).toBe(true);
+            });
+    
+            it('should not allocate if skus do not match', () => {
+                const order = new OrderLine('order-ref', 'LARGE-TABLE', 20);
+                expect(product.canAllocate(order)).toBe(false);
+            });
         });
     });
 });
