@@ -102,6 +102,15 @@ export class ProductRepo implements IProductRepo {
         return this.fromDb(result);
     }
 
+    async save(product: IProduct, client: PoolClient): Promise<void> {
+        const result = await client.query(
+            'UPDATE product SET version = $1 WHERE sku = $2 AND version = $3', 
+            [product.version + 1, product.sku, product.version]
+        );
+        console.log(result);
+        product.version = product.version + 1;
+    }
+
     async allocate(batch: IBatch, line: IOrderLine): Promise<string> {
         const constraint = await this.client.query(
             `
