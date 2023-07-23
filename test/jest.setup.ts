@@ -10,6 +10,7 @@ import { IBatch, Batch, IOrderLine, OrderLine, IProduct, Product } from '../lib/
 
 import {enableMapSet, enablePatches} from 'immer';
 import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
+import { IProductService, ProductService } from '../lib/service/ProductService';
 enablePatches();
 enableMapSet();
 
@@ -20,6 +21,7 @@ parentContainer.bind<ICosmicConfig>('CosmicConfig').toConstantValue(
 parentContainer.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
 parentContainer.bind<IProduct[]>('fakeProducts').toConstantValue([]);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
+parentContainer.bind<IProductService>('ProductService').to(ProductService);
 
 interface IChance extends Chance.Chance {
     batch: (defaults?: object) => IBatch;
@@ -27,7 +29,6 @@ interface IChance extends Chance.Chance {
     product: (defaults?: object) => IProduct;
     client: (defaults?: object) => IProductAggregateClient;
 }
-
 
 const chance = new Chance() as IChance;
 chance.mixin({
