@@ -4,12 +4,12 @@ export interface IProduct {
     batches: IBatch[];
     version: number;
 
-    allocate(line: OrderLine): string;
+    allocate(line: OrderLine): IProduct;
     canAllocate(line: OrderLine): boolean;
+    deallocate(line: OrderLine): IProduct;
 }
 
-export class Product {
-
+export class Product implements IProduct {
     constructor(
         public sku: string,
         public description: string,
@@ -17,17 +17,30 @@ export class Product {
         public version: number
     ) {}
 
-    allocate(line: OrderLine): string {
+    allocate(line: OrderLine): Product {
         const batch = this.batches.find(b => b.canAllocate(line));
         if (batch) {
             batch.allocate(line);
-            return batch.reference;
+            this.version += 1;
+            return this;
         }
         throw new OutOfStockError(line.sku);
     }
 
     canAllocate(line: OrderLine): boolean {
         return this.batches.some(b => b.canAllocate(line));
+    }
+
+    deallocate(line: OrderLine): Product {
+        const batch = this.batches.find(b => b.allocatedOrders().some((l) => {
+            return l.orderId === line.orderId;
+        }));
+        if (batch) {
+            batch.deallocate(line);
+            this.version += 1;
+            return this;
+        }
+        throw new Error('Batch not found');
     }
 }
 
@@ -56,18 +69,20 @@ export interface IBatch {
     reference: string;
     sku: string;
     available_quantity: number;
+    max_quantity: number;
     eta: Date;
 
     allocate(line: OrderLine): Batch;
     canAllocate(line: OrderLine): boolean;
     deallocate(line: OrderLine): Batch;
+    allocatedOrders(): OrderLine[];
     __eq__(other: Batch): boolean;
     __hash__(): string;
 }
 
 
 export class Batch {
-    private allocated: Map<string, OrderLine> = new Map();
+    protected allocated: Map<string, OrderLine> = new Map();
     private _available_quantity: number;
 
     constructor(
@@ -84,9 +99,15 @@ export class Batch {
             .reduce((acc, line) => acc - line.qty, this._available_quantity);
     }
 
+    get max_quantity(): number {
+        return this._available_quantity;
+    }
+
     allocate(line: OrderLine): Batch {
         if (this.canAllocate(line)) {
             this.allocated.set(line.orderId, line);
+        } else {
+            throw new Error('Cannot allocate');
         }
         return this;
     }
@@ -100,6 +121,10 @@ export class Batch {
             this.allocated.delete(line.orderId);
         }
         return this;
+    }
+
+    allocatedOrders(): OrderLine[] {
+        return [...this.allocated.values()];
     }
 
     __eq__(other: Batch): boolean {

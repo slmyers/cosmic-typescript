@@ -6,21 +6,26 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { IProductRepo } from '../lib/repository/ProductRepo';
 import { FakeProductRepo } from '../lib/repository/fakes/ProductRepo';
-import { IBatch, Batch, IOrderLine, OrderLine, IProduct } from '../lib/domain/Product';
-// import { BatchService } from '../packages/service/Batch.service';
+import { IBatch, Batch, IOrderLine, OrderLine, IProduct, Product } from '../lib/domain/Product';
 
-const container = new Container();
-container.bind<ICosmicConfig>('CosmicConfig').toConstantValue(
+import {enableMapSet, enablePatches} from 'immer';
+import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
+enablePatches();
+enableMapSet();
+
+const parentContainer = new Container();
+parentContainer.bind<ICosmicConfig>('CosmicConfig').toConstantValue(
     bootstrapCosmicConfig()
 );
-container.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
-// container.bind<BatchService>(BatchService).to(BatchService);
-container.bind<IProduct[]>('fakeProducts').toConstantValue([]);
+parentContainer.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
+parentContainer.bind<IProduct[]>('fakeProducts').toConstantValue([]);
+parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
 
 interface IChance extends Chance.Chance {
     batch: (defaults?: object) => IBatch;
     orderLine: (defaults?: object) => IOrderLine;
     product: (defaults?: object) => IProduct;
+    client: (defaults?: object) => IProductAggregateClient;
 }
 
 
@@ -55,18 +60,27 @@ chance.mixin({
             batches: [],
             version: 1,
         }, defaults);
-        return {
-            sku: props.sku,
-            description: props.description,
-            batches: props.batches,
-            version: props.version,
-            allocate: jest.fn(),
-            canAllocate: jest.fn(),
-        };
+        return new Product(
+            props.sku,
+            props.description,
+            props.batches,
+            props.version,
+        );
     },
+    client: function(defaults = {}): IProductAggregateClient {
+        const props = Object.assign({
+            release: jest.fn(),
+            begin: jest.fn(),
+            commit: jest.fn(),
+            rollback: jest.fn(),
+            query: jest.fn(),
+            connect: jest.fn(),
+        }, defaults);
+        return props;
+    }
 });
 
-export { container, chance };
+export { parentContainer, chance };
 
 function bootstrapCosmicConfig(): ICosmicConfig {
     process.env.NODE_ENV = 'test';
