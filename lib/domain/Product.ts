@@ -42,6 +42,12 @@ export class Product implements IProduct {
         }
         throw new Error('Batch not found');
     }
+
+    updateDescription(description: string): Product {
+        this.description = description;
+        this.version += 1;
+        return this;
+    }
 }
 
 

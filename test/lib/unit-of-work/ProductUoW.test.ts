@@ -132,7 +132,6 @@ describe('ProductUoW', () => {
 
             expect(client.query).toHaveBeenCalledWith('BEGIN');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
-            expect(client.connect).toHaveBeenCalledTimes(1);
             expect(client.release).toHaveBeenCalledTimes(1);
         });
 
@@ -182,7 +181,6 @@ describe('ProductUoW', () => {
 
             expect(client.query).toHaveBeenCalledWith('BEGIN');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
-            expect(client.connect).toHaveBeenCalledTimes(1);
             expect(client.release).toHaveBeenCalledTimes(1);
         });
     });

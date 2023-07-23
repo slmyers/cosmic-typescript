@@ -49,7 +49,6 @@ export class TrackedBatch extends Batch {
 
 @injectable()
 export class ProductUoW implements IProductUoW {
-    private lockSet = new Set<string>();
     public state: 'open' | 'closed' | 'begin' | 'commit' | 'rollback' = 'closed';
 
     constructor(
@@ -72,8 +71,8 @@ export class ProductUoW implements IProductUoW {
         await this.connect();
         await this.begin();
         try {
-            const product = await this.load(sku);
             await this.lock(sku);
+            const product = await this.load(sku);
             const draft = createDraft(product);
             fn(draft);
             let patches: Patch[] = [];
@@ -93,14 +92,12 @@ export class ProductUoW implements IProductUoW {
 
     async connect(): Promise<void> {
         if (this.state === 'closed') {
-            await this.client.connect();
             this.state = 'open';
         }
     }
 
     async lock(sku: string): Promise<void> {
-        if (this.state === 'begin' && !this.lockSet.has(sku)) {
-            this.lockSet.add(sku);
+        if (this.state === 'begin') {
             if (this.config.concurrencyMode === 'pessimistic') {
                 await this.client.query('SELECT FROM product WHERE sku = $1 FOR UPDATE', [sku]);
             }
@@ -110,8 +107,7 @@ export class ProductUoW implements IProductUoW {
         throw new Error(
             'Unable to lock: ' + sku + 
             ' in state: ' + this.state + 
-            ' with concurrency mode: ' + this.config.concurrencyMode + 
-            ' and lock set: ' + JSON.stringify(Array.from(this.lockSet))
+            ' with concurrency mode: ' + this.config.concurrencyMode 
         );
     }
 
@@ -186,12 +182,17 @@ export class ProductUoW implements IProductUoW {
                     }
                     break;  
                 }
+                case 'description': {
+                    if (patch.op === 'replace') {
+                        console.log(patch);
+                        await this.repo.updateDescription(product.sku, patch.value, this.client);
+                    }
+                    break;
+                }
                 }
             }
-
             await this.client.query('COMMIT');
             this.state = 'commit';
-            this.lockSet.delete(product.sku);
         }
     }
 }

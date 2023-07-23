@@ -124,7 +124,6 @@ export class ProductRepo implements IProductRepo {
                     allocation.sku,
                     allocation.qty
                 ));
-                console.log(batch);
             } else {
                 throw new Error('Batch not found: ' + allocation.reference);
             }
