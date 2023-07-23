@@ -64,6 +64,7 @@ export class ProductUoW implements IProductUoW {
         }
     }
 
+    // should this accept an array of functions so multiple services can be called in one transaction?
     async transaction(
         sku: string,
         fn: (product: TrackedProduct) => void,
@@ -85,8 +86,6 @@ export class ProductUoW implements IProductUoW {
         } catch (e) {
             await this.rollback();
             throw e;
-        } finally {
-            await this.release();
         }
     }
 
@@ -116,7 +115,11 @@ export class ProductUoW implements IProductUoW {
             await this.connect();
         }
         if (this.state === 'open') {
-            await this.client.query('BEGIN');
+            if (this.config.concurrencyMode === 'optimistic') {
+                await this.client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;');
+            } else {
+                await this.client.query('BEGIN;');
+            }
             this.state = 'begin';
         }
     }
@@ -184,7 +187,6 @@ export class ProductUoW implements IProductUoW {
                 }
                 case 'description': {
                     if (patch.op === 'replace') {
-                        console.log(patch);
                         await this.repo.updateDescription(product.sku, patch.value, this.client);
                     }
                     break;

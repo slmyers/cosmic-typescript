@@ -130,9 +130,8 @@ describe('ProductUoW', () => {
             expect(spies.updateVersion).toHaveBeenCalledTimes(1);
             expect(spies.updateVersion).toHaveBeenCalledWith(sku, 3, client);
 
-            expect(client.query).toHaveBeenCalledWith('BEGIN');
+            expect(client.query).toHaveBeenCalledWith('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
-            expect(client.release).toHaveBeenCalledTimes(1);
         });
 
         it('should deallocate', async () => {
@@ -179,9 +178,8 @@ describe('ProductUoW', () => {
             expect(spies.updateVersion).toHaveBeenCalledTimes(1);
             expect(spies.updateVersion).toHaveBeenCalledWith(sku, 4, client);
 
-            expect(client.query).toHaveBeenCalledWith('BEGIN');
+            expect(client.query).toHaveBeenCalledWith('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
-            expect(client.release).toHaveBeenCalledTimes(1);
         });
     });
 });
