@@ -59,14 +59,14 @@ describe('Batch Domain', () => {
                 const order = new OrderLine('order-ref', 'SMALL-TABLE', lesser);
                 batch.allocate(order);
                 expect(batch.available_quantity).toBe(max - lesser);
-                batch.deallocate(order);
+                batch.deallocate(order.orderId);
                 expect(batch.available_quantity).toBe(max);
             });
     
             it('should only deallocate allocated lines', () => {
                 const batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
                 const order = new OrderLine('order-ref', 'SMALL-TABLE', 10);
-                batch.deallocate(order);
+                batch.deallocate(order.orderId);
                 expect(batch.available_quantity).toBe(20);
             });
         });

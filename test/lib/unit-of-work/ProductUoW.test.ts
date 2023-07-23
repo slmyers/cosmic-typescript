@@ -143,7 +143,7 @@ describe('ProductUoW', () => {
                 (p: TrackedProduct): void => {
                     p.allocate(order);
                     p.allocate(order2);
-                    p.deallocate(order3);
+                    p.deallocate(order3.orderId);
                 },
             );
 

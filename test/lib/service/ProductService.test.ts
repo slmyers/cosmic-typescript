@@ -39,7 +39,7 @@ describe('ProductService', () => {
         it('should allocate', async () => {
             const order = chance.orderLine({ sku, qty: 1 });
             
-            const res = await service.allocate(order);
+            const res = await service.allocate(product.sku, order);
 
             expect(res).toBeInstanceOf(Object);
             expect(res).toHaveProperty('sku');
@@ -66,7 +66,11 @@ describe('ProductService', () => {
         });
 
         it('should throw error if product is not found', async () => {
-            await expect(service.allocate(chance.orderLine())).rejects.toThrow('Product not found');
+            const expectedSku = chance.word();
+            await expect(service.allocate(
+                product.sku,
+                chance.orderLine({ sku: expectedSku })
+            )).rejects.toThrow(`Out of stock for sku ${expectedSku}`);
         });
     });
 

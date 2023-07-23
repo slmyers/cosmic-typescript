@@ -3,8 +3,8 @@ import { IOrderLine, IProduct } from '../domain/Product';
 import { IProductUoW } from '../unit-of-work/ProductUoW';
 
 export interface IProductService {
-    allocate(order: IOrderLine): Promise<IProduct>;
-    deallocate(order: IOrderLine): Promise<void>;
+    allocate(sku: string, order: IOrderLine): Promise<IProduct>;
+    deallocate(sku: string, orderId: string): Promise<void>;
 }
 
 @injectable()
@@ -14,19 +14,19 @@ export class ProductService implements IProductService {
         @inject('ProductUoW') private uow: IProductUoW,
     ) {}
 
-    async allocate(order: IOrderLine): Promise<IProduct> {
+    async allocate(sku: string, order: IOrderLine): Promise<IProduct> {
         return this.uow.transaction(
-            order.sku,
+            sku,
             (product) => {
                 product.allocate(order);
             }
         );
     }
-    async deallocate(order: IOrderLine): Promise<void> {
+    async deallocate(sku: string, orderId: string): Promise<void> {
         await this.uow.transaction(
-            order.sku,
+            sku,
             (product) => {
-                product.deallocate(order);
+                product.deallocate(orderId);
             }
         );
     }

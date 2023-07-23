@@ -48,7 +48,7 @@ export class FakeProductRepo implements IProductRepo {
         if (product) {
             const batch = product.batches.find(b => b.reference === batchReference);
             if (batch) {
-                batch.deallocate(line);
+                batch.deallocate(line.orderId);
             }
             return;
         }

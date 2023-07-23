@@ -6,7 +6,7 @@ export interface IProduct {
 
     allocate(line: OrderLine): IProduct;
     canAllocate(line: OrderLine): boolean;
-    deallocate(line: OrderLine): IProduct;
+    deallocate(orderId: string): IProduct;
 }
 
 export class Product implements IProduct {
@@ -31,12 +31,12 @@ export class Product implements IProduct {
         return this.batches.some(b => b.canAllocate(line));
     }
 
-    deallocate(line: OrderLine): Product {
+    deallocate(orderId: string): Product {
         const batch = this.batches.find(b => b.allocatedOrders().some((l) => {
-            return l.orderId === line.orderId;
+            return l.orderId === orderId;
         }));
         if (batch) {
-            batch.deallocate(line);
+            batch.deallocate(orderId);
             this.version += 1;
             return this;
         }
@@ -80,14 +80,14 @@ export interface IBatch {
 
     allocate(line: OrderLine): Batch;
     canAllocate(line: OrderLine): boolean;
-    deallocate(line: OrderLine): Batch;
+    deallocate(orderId: string): Batch;
     allocatedOrders(): OrderLine[];
     __eq__(other: Batch): boolean;
     __hash__(): string;
 }
 
 
-export class Batch {
+export class Batch implements IBatch {
     protected allocated: Map<string, OrderLine> = new Map();
     private _available_quantity: number;
 
@@ -122,9 +122,9 @@ export class Batch {
         return this.sku === line.sku && this.available_quantity >= line.qty;
     }
 
-    deallocate(line: OrderLine): Batch {
-        if (this.allocated.has(line.orderId)) {
-            this.allocated.delete(line.orderId);
+    deallocate(orderId: string): Batch {
+        if (this.allocated.has(orderId)) {
+            this.allocated.delete(orderId);
         }
         return this;
     }
