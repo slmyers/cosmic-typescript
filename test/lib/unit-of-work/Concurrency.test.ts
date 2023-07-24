@@ -65,8 +65,6 @@ describe('UnitOfWork Concurrency', () => {
                 await c.query('COMMIT;');
                 await c.release();
             });
-            client.release();
-            client2.release();
         });
 
         it('should lock', async () => {
@@ -152,8 +150,6 @@ describe('UnitOfWork Concurrency', () => {
                 await c.query('COMMIT;');
                 await c.release();
             });
-            client.release();
-            client2.release();
         });
 
         it('should fail due to concurrent update', async () => {

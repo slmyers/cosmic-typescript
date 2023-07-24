@@ -60,6 +60,8 @@ describe('ProductRepo', () => {
 
         it('should return a product', async () => {
             const product = await repro.load(sku, client);
+            // const existing = (await client.query('SELECT * FROM product')).rows;
+            // console.log(existing);
             expect(product).toBeDefined();
             expect(product.sku).toEqual(sku);
             expect(product.batches.length).toEqual(1);

@@ -76,15 +76,16 @@ export class ProductRepo implements IProductRepo {
                 p.version,
                 coalesce(json_agg(batches.batch), '[]') as batches,
                 coalesce(json_agg(orders.allocation), '[]') as allocations
-            FROM product p
-            FULL OUTER JOIN batches ON batches.sku = p.sku
-            FULL OUTER JOIN orders ON orders.reference = batches.reference
+            FROM prod p
+            LEFT OUTER JOIN batches ON batches.sku = p.sku
+            LEFT OUTER JOIN orders ON orders.reference = batches.reference
             GROUP BY p.sku, p.description, p.version;
             `,
             [
                 sku,
             ]
         );
+
         if (result.rows.length === 0) {
             throw new Error('Product not found: ' + sku);
         }
@@ -133,7 +134,7 @@ export class ProductRepo implements IProductRepo {
     }
     get retrievalCTE() {
         return `
-            with product as (
+            with prod as (
                 SELECT * FROM product WHERE sku = $1
             ),
             batches as (
@@ -147,7 +148,7 @@ export class ProductRepo implements IProductRepo {
                         'eta', b.eta
                     )) as batch
                 FROM batch b
-                INNER JOIN product p ON p.sku = b.sku
+                LEFT JOIN prod p ON p.sku = b.sku
                 GROUP BY b.sku, b.reference
             ),
             orders as (

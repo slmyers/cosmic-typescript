@@ -86,6 +86,8 @@ export class ProductUoW implements IProductUoW {
         } catch (e) {
             await this.rollback();
             throw e;
+        } finally {
+            await this.release();
         }
     }
 

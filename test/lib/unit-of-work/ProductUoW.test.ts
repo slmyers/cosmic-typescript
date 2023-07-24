@@ -132,6 +132,7 @@ describe('ProductUoW', () => {
 
             expect(client.query).toHaveBeenCalledWith('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
+            expect(client.release).toHaveBeenCalledTimes(1);
         });
 
         it('should deallocate', async () => {
@@ -180,6 +181,7 @@ describe('ProductUoW', () => {
 
             expect(client.query).toHaveBeenCalledWith('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;');
             expect(client.query).toHaveBeenCalledWith('COMMIT');
+            expect(client.release).toHaveBeenCalledTimes(1);
         });
     });
 });
