@@ -7,10 +7,13 @@ import * as path from 'path';
 import { IProductRepo } from '../lib/repository/ProductRepo';
 import { FakeProductRepo } from '../lib/repository/fakes/ProductRepo';
 import { IBatch, Batch, IOrderLine, OrderLine, IProduct, Product } from '../lib/domain/Product';
+import { IProductEvent } from '../lib/domain/ProductEvent';
 
 import {enableMapSet, enablePatches} from 'immer';
 import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
 import { IProductService, ProductService } from '../lib/service/ProductService';
+import { IMessageBus } from '../lib/service/MessageBusService';
+
 enablePatches();
 enableMapSet();
 
@@ -28,6 +31,8 @@ interface IChance extends Chance.Chance {
     orderLine: (defaults?: object) => IOrderLine;
     product: (defaults?: object) => IProduct;
     client: (defaults?: object) => IProductAggregateClient;
+    messageBus: (defaults?: object) => IMessageBus;
+    productEvent: (defaults?: object) => IProductEvent;
 }
 
 const chance = new Chance() as IChance;
@@ -78,8 +83,24 @@ chance.mixin({
             connect: jest.fn(),
         }, defaults);
         return props;
-    }
+    },
+    messageBus: function(defaults = {}): IMessageBus {
+        const props = Object.assign({
+            publish: jest.fn(),
+        }, defaults);
+        return props;
+    },
+    productEvent: function(defaults = {}): IProductEvent {
+        const props = Object.assign({
+            sku: chance.string(),
+            description: chance.string(),
+            version: chance.integer({ min: 1, max: 100 }),
+        }, defaults);
+        return props;
+    },
 });
+
+parentContainer.bind<IMessageBus>('MessageBusService').toConstantValue(chance.messageBus());
 
 export { parentContainer, chance };
 

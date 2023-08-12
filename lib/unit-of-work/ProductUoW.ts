@@ -1,5 +1,5 @@
 import { inject, injectable } from 'inversify';
-import { Patch, immerable, createDraft, finishDraft } from 'immer';
+import { Patch, immerable, createDraft, finishDraft, Draft } from 'immer';
 import {
     Batch,
     IProduct,
@@ -8,6 +8,7 @@ import {
 } from '../domain/Product';
 import { IProductRepo, IProductClient } from '../repository/ProductRepo';
 import { CosmicConfig } from '../../config/cosmic';
+import { IMessageBus } from '../service/MessageBusService';
 
 
 export interface IProductAggregateClient extends IProductClient {
@@ -22,7 +23,7 @@ export interface IProductUoW {
         sku: string,
         fn: (product: TrackedProduct) => void,
     ): Promise<IProduct>;
-    state: 'open' | 'closed' | 'begin' | 'commit' | 'rollback';
+    state: 'open' | 'closed' | 'begin' | 'commit' | 'rollback' | 'released';
 }
 
 export class TrackedProduct extends Product {
@@ -49,44 +50,49 @@ export class TrackedBatch extends Batch {
 
 @injectable()
 export class ProductUoW implements IProductUoW {
-    public state: 'open' | 'closed' | 'begin' | 'commit' | 'rollback' = 'closed';
+    public state: 'open' | 'closed' | 'begin' | 'commit' | 'rollback' | 'released' = 'closed';
+    private locked: Set<string> = new Set();
+    private loaded: Map<string, TrackedProduct> = new Map();
+    private drafts: WeakMap<TrackedProduct, Draft<TrackedProduct>> = new WeakMap();
 
     constructor(
         @inject('ProductRepo') private repo: IProductRepo,
         @inject('AggregateClient') private client: IProductAggregateClient,
         @inject('CosmicConfig') private config: CosmicConfig,
+        @inject('MessageBusService') private messageBus: IMessageBus,
     ) {}
 
     async release(): Promise<void> {
         if (this.state === 'closed' || this.state === 'commit' || this.state === 'rollback' || this.state === 'open') {
             await this.client.release();
-            this.state = 'closed';
+            this.state = 'released';
         }
     }
 
-    // should this accept an array of functions so multiple services can be called in one transaction?
     async transaction(
         sku: string,
         fn: (product: TrackedProduct) => void,
     ): Promise<IProduct> {
         await this.connect();
         await this.begin();
+        let patches: Patch[] = [];
         try {
             await this.lock(sku);
             const product = await this.load(sku);
-            const draft = createDraft(product);
+            const draft = this.resolveDraft(product);
             fn(draft);
-            let patches: Patch[] = [];
             const result = finishDraft(
                 draft,
                 (p: Patch[]) => patches = p
             );
             await this.commit(patches, result);
+            this.updateDraft(product, draft);
             return result;
         } catch (e) {
             await this.rollback();
             throw e;
         } finally {
+            await this.publishEvents(patches);
             await this.release();
         }
     }
@@ -99,7 +105,8 @@ export class ProductUoW implements IProductUoW {
 
     async lock(sku: string): Promise<void> {
         if (this.state === 'begin') {
-            if (this.config.concurrencyMode === 'pessimistic') {
+            if (this.config.concurrencyMode === 'pessimistic'
+            && !this.locked.has(sku)) {
                 await this.client.query('SELECT FROM product WHERE sku = $1 FOR UPDATE', [sku]);
             }
             return;
@@ -127,6 +134,14 @@ export class ProductUoW implements IProductUoW {
     }
 
     async load(sku: string): Promise<TrackedProduct> {
+        if (this.state !== 'begin') {
+            throw new Error('Unable to load product in state: ' + this.state);
+        }
+
+        if (this.loaded.has(sku)) {
+            return this.loaded.get(sku) as TrackedProduct;
+        }
+
         const product = await this.repo.load(sku, this.client);
 
         const trackedBatches = product.batches.map(b => new TrackedBatch(
@@ -137,13 +152,17 @@ export class ProductUoW implements IProductUoW {
             b.allocatedOrders(),
         ));
 
-        
-        return new TrackedProduct(
+        const trackedProduct = new TrackedProduct(
             product.sku,
             product.description,
             trackedBatches,
             product.version
         );
+
+        this.loaded.set(sku, trackedProduct);
+
+        
+        return trackedProduct;
     }
 
     async rollback(): Promise<void> {
@@ -197,6 +216,42 @@ export class ProductUoW implements IProductUoW {
             }
             await this.client.query('COMMIT');
             this.state = 'commit';
+        }
+    }
+
+    async publishEvents(patches: Patch[]): Promise<void> {
+        const promises: Promise<void>[] = [];
+        if (this.state === 'commit') {
+            for (const patch of patches) {
+                switch (patch.path[0]) {
+                case 'events': {
+                    if (patch.op === 'add') {
+                        promises.push(this.messageBus.publish(patch.value));
+                    }
+                    break;
+                }
+                }
+            }
+        }
+        await Promise.all(promises);
+    }
+
+    private resolveDraft(product): Draft<TrackedProduct> {
+        if (this.drafts.has(product)) {
+            const d = this.drafts.get(product);
+            if (d) {
+                return d;
+            }
+        }
+
+        const draft = createDraft(product);
+        this.drafts.set(product, draft);
+        return draft;
+    }
+
+    private updateDraft(product: TrackedProduct, draft: Draft<TrackedProduct>): void {
+        if (this.drafts.has(product)) {
+            this.drafts.set(product, draft);
         }
     }
 }

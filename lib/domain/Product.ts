@@ -1,8 +1,11 @@
+import { IProductEvent, ProductOutOfStockEventV1 } from './ProductEvent';
+
 export interface IProduct {
     sku: string;
     description: string;
     batches: IBatch[];
     version: number;
+    events: IProductEvent[];
 
     allocate(line: OrderLine): IProduct;
     canAllocate(line: OrderLine): boolean;
@@ -10,6 +13,7 @@ export interface IProduct {
 }
 
 export class Product implements IProduct {
+    events: IProductEvent[] = [];
     constructor(
         public sku: string,
         public description: string,
@@ -22,9 +26,11 @@ export class Product implements IProduct {
         if (batch) {
             batch.allocate(line);
             this.version += 1;
-            return this;
+        } else {
+            this.events.push(new ProductOutOfStockEventV1(this.sku));
         }
-        throw new OutOfStockError(line.sku);
+
+        return this;
     }
 
     canAllocate(line: OrderLine): boolean {

@@ -4,6 +4,9 @@ import {
     TrackedBatch,
     TrackedProduct,
 } from '../../../lib/unit-of-work/ProductUoW';
+import {
+    ProductOutOfStockEventV1
+} from '../../../lib/domain/ProductEvent';
 import { chance, parentContainer } from '../../jest.setup';
 
 describe('ProductUoW', () => {
@@ -184,4 +187,46 @@ describe('ProductUoW', () => {
             expect(client.release).toHaveBeenCalledTimes(1);
         });
     });
+
+    describe('events', () => {
+        let product;
+        let order;
+        let sku;
+        let container;
+        let client;
+        let repro;
+        let messageBus;
+
+        beforeEach(() => {
+            sku = chance.word();
+            order = chance.orderLine({ sku, qty: 1 });
+            product = chance.product({ sku });
+            container = parentContainer.createChild();
+            container.bind('fakeProducts').toConstantValue([product]);
+
+            client = chance.client();
+            container.bind('AggregateClient').toConstantValue(client);
+
+            repro = container.get('ProductRepo');
+            container.bind('ProductRepo').toConstantValue(repro);
+
+            messageBus = container.get('MessageBusService');
+            container.bind('MessageBusService').toConstantValue(messageBus);
+        });
+        it('should raise an out of stock event', async () => {
+            const uow: IProductUoW = container.get('ProductUoW');
+            const res = await uow.transaction(
+                sku,
+                (p: TrackedProduct): void => {
+                    p.allocate(order);
+                }
+            );
+
+            expect(res).toBeInstanceOf(TrackedProduct);
+            expect(messageBus.publish).toHaveBeenCalledTimes(1);
+            expect(messageBus.publish).toHaveBeenCalledWith(new ProductOutOfStockEventV1(sku));
+        });
+    });
+
+
 });

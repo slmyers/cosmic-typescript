@@ -1,25 +1,39 @@
 import { inject, injectable } from 'inversify';
-import { IProduct, OrderLine } from '../domain/Product';
-import {
-    IProductEvent,
-    ProductAllocationRequredEventV1,
-    ProductDeallocationRequredEventV1,
-} from '../domain/ProductEvent';
+import { IProductEvent, ProductAllocationRequredEventV1, ProductDeallocationRequredEventV1 } from '../domain/ProductEvent';
 import { IProductUoW } from '../unit-of-work/ProductUoW';
+import { OrderLine, IProduct } from '../domain/Product';
 
-export interface IProductService {
-    allocate(event: IProductEvent): Promise<IProduct>;
-    deallocate(event: IProductEvent): Promise<void>;
+export interface IMessageBus {
+    publish(event: IProductEvent): Promise<void>;
 }
 
 @injectable()
-export class ProductService implements IProductService {
-
+export class MessageBusService implements IMessageBus {
     constructor(
         @inject('ProductUoW') private uow: IProductUoW,
     ) {}
 
-    async allocate(event: IProductEvent): Promise<IProduct> {
+    async publish(event: IProductEvent): Promise<void> {
+        switch(event.type) {
+        case 'ProductOutOfStock':
+            await this.handleOutOfStockEvent(event);
+            break;
+        case 'ProductAllocationRequred':
+            await this.handleAllocate(event);
+            break;
+        case 'ProductDeallocationRequred':
+            await this.handleDeallocate(event);
+            break;
+        default:
+            console.error(`Unknown event type ${event.type}`);
+        }
+    }
+
+    async handleOutOfStockEvent(event: IProductEvent): Promise<void> {
+        console.log(`Handling out of stock event for ${event.sku}`);
+    }
+
+    async handleAllocate(event: IProductEvent): Promise<IProduct> {
         if (event.type !== 'ProductAllocationRequred') {
             throw new Error('Invalid event type: ' + event.type);
         }
@@ -35,7 +49,7 @@ export class ProductService implements IProductService {
             throw new Error('Invalid event version: ' + event.eventVersion);
         }
     }
-    async deallocate(event: IProductEvent): Promise<void> {
+    async handleDeallocate(event: IProductEvent): Promise<void> {
         if (event.type !== 'ProductDeallocationRequred') {
             throw new Error('Invalid event type: ' + event.type);
         }
@@ -51,5 +65,4 @@ export class ProductService implements IProductService {
             throw new Error('Invalid event version: ' + event.eventVersion);
         }
     }
-
 }

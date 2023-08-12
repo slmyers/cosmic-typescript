@@ -1,8 +1,9 @@
 import { add } from 'date-fns';
 import { Batch, OrderLine, allocate, OutOfStockError, Product } from '../../../lib/domain/Product';
+import { ProductOutOfStockEventV1 } from '../../../lib/domain/ProductEvent';
 import { chance } from '../../jest.setup';
 
-describe('Batch Domain', () => {
+describe('Product Domain', () => {
     let today: Date;
     let tomorrow: Date;
 
@@ -128,25 +129,35 @@ describe('Batch Domain', () => {
     });
 
     describe('Product Model', () => {
+        let product: Product;
+        let order: OrderLine;
+        let batch: Batch;
+
+        beforeEach(() => {
+            batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
+            product = new Product('SMALL-TABLE', 'Small Table', [batch], 1);
+            order = new OrderLine('order-ref', 'SMALL-TABLE', 10);
+        });
+
         it('should import', () => {
             expect(Product).toBeDefined();
         });
 
         describe('Allocate', () => {
-            let product: Product;
-            let order: OrderLine;
-            let batch: Batch;
-            beforeEach(() => {
-                batch = new Batch('batch-001', 'SMALL-TABLE', 20, tomorrow);
-                product = new Product('SMALL-TABLE', 'Small Table', [batch], 1);
-                order = new OrderLine('order-ref', 'SMALL-TABLE', 10);
-            });
-
             it('should allocate to a batch reduces the available quantity', () => {
                 product.allocate(order);
                 expect(batch.available_quantity).toBe(10);
             });
-    
+
+            it('should raise an event if allocating more than the avaialble quantity', () => {
+                const order = new OrderLine('order-ref', 'SMALL-TABLE', 30);
+                product.allocate(order);
+                expect(product.events).toEqual([new ProductOutOfStockEventV1(product.sku)]);
+            });
+        });
+
+        describe('canAllocate', () => {
+
             it('should can allocate if available greater than required', () => {
                 expect(product.canAllocate(order)).toBe(true);
             });
