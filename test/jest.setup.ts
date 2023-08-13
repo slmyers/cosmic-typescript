@@ -12,6 +12,7 @@ import { IProductEvent } from '../lib/domain/ProductEvent';
 import {enableMapSet, enablePatches} from 'immer';
 import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
 import { IMessageBus, MessageBusService } from '../lib/service/MessageBusService';
+import { IMessageHandlers, MessageHandlers } from '../lib/service/MessageHandlers';
 
 enablePatches();
 enableMapSet();
@@ -24,6 +25,7 @@ parentContainer.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
 parentContainer.bind<IProduct[]>('fakeProducts').toConstantValue([]);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
 parentContainer.bind<IMessageBus>('MessageBusService').to(MessageBusService);
+parentContainer.bind<IMessageHandlers>('MessageHandlers').to(MessageHandlers);
 
 interface IChance extends Chance.Chance {
     batch: (defaults?: object) => IBatch;

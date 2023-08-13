@@ -8,6 +8,7 @@ import { IProductRepo, ProductRepo } from '../lib/repository/ProductRepo';
 import { IMessageBus, MessageBusService } from '../lib/service/MessageBusService';
 import { IProductUoW, ProductUoW } from '../lib/unit-of-work/ProductUoW';
 import { Pool } from '../lib/infra/pg';
+import { IMessageHandlers, MessageHandlers } from '../lib/service/MessageHandlers';
 
 const config = bootstrapCosmicConfig();
 const pool = new Pool(config);
@@ -17,6 +18,7 @@ parentContainer.bind<ICosmicConfig>('CosmicConfig').toConstantValue(config);
 parentContainer.bind<IProductRepo>('ProductRepo').to(ProductRepo);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
 parentContainer.bind<IMessageBus>('MessageBusService').to(MessageBusService);
+parentContainer.bind<IMessageHandlers>('MessageHandlers').to(MessageHandlers);
 
 function bootstrapCosmicConfig(): ICosmicConfig {
     process.env.NODE_ENV = 'test';
