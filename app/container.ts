@@ -5,7 +5,7 @@ import { Container } from 'inversify';
 
 import { ICosmicConfig, CosmicConfig } from '../config/cosmic';
 import { IProductRepo, ProductRepo } from '../lib/repository/ProductRepo';
-import { IProductService, ProductService } from '../lib/service/ProductService';
+import { IMessageBus, MessageBusService } from '../lib/service/MessageBusService';
 import { IProductUoW, ProductUoW } from '../lib/unit-of-work/ProductUoW';
 import { Pool } from '../lib/infra/pg';
 
@@ -16,7 +16,7 @@ const parentContainer = new Container();
 parentContainer.bind<ICosmicConfig>('CosmicConfig').toConstantValue(config);
 parentContainer.bind<IProductRepo>('ProductRepo').to(ProductRepo);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
-parentContainer.bind<IProductService>('ProductService').to(ProductService);
+parentContainer.bind<IMessageBus>('MessageBusService').to(MessageBusService);
 
 function bootstrapCosmicConfig(): ICosmicConfig {
     process.env.NODE_ENV = 'test';

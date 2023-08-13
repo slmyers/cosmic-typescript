@@ -11,7 +11,6 @@ import { IProductEvent } from '../lib/domain/ProductEvent';
 
 import {enableMapSet, enablePatches} from 'immer';
 import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
-import { IProductService, ProductService } from '../lib/service/ProductService';
 import { IMessageBus, MessageBusService } from '../lib/service/MessageBusService';
 
 enablePatches();
@@ -24,7 +23,6 @@ parentContainer.bind<ICosmicConfig>('CosmicConfig').toConstantValue(
 parentContainer.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
 parentContainer.bind<IProduct[]>('fakeProducts').toConstantValue([]);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
-parentContainer.bind<IProductService>('ProductService').to(ProductService);
 parentContainer.bind<IMessageBus>('MessageBusService').to(MessageBusService);
 
 interface IChance extends Chance.Chance {

@@ -2,9 +2,10 @@ import * as Hapi from '@hapi/hapi';
 import {enableMapSet, enablePatches} from 'immer';
 import { Container } from 'inversify';
 
-import { IProductService } from '../lib/service/ProductService';
 import { IOrderLine, OrderLine } from '../lib/domain/Product';
 import { assignContainer } from './container';
+import { IMessageBus } from '../lib/service/MessageBusService';
+import { ProductAllocationRequredEventV1, ProductDeallocationRequredEventV1 } from '../lib/domain/ProductEvent';
 
 
 init();
@@ -29,11 +30,16 @@ async function init() {
         handler: async (request, h) => {
             const payload = request.payload as IOrderLine;
             const order = new OrderLine(payload.orderId, payload.sku, payload.qty);
-            const container: Container = await assignContainer();
 
             try {
-                const service = container.get<IProductService>('ProductService');
-                await service.allocate(request.params.sku, order);
+                const container: Container = await assignContainer();
+                const messageBus = container.get<IMessageBus>('MessageBusService');
+                const event = new ProductAllocationRequredEventV1(
+                    order.orderId,
+                    order.sku,
+                    order.qty,
+                );
+                await messageBus.publish(event);
                 return h.response().code(204);
             } catch (e: any) {
                 console.log(e);
@@ -53,8 +59,12 @@ async function init() {
 
             try {
                 const container: Container = await assignContainer();
-                const service = container.get<IProductService>('ProductService');
-                await service.deallocate(sku, orderId);
+                const messageBus = container.get<IMessageBus>('MessageBusService');
+                const event = new ProductDeallocationRequredEventV1(
+                    orderId,
+                    sku,
+                );
+                await messageBus.publish(event);
                 return h.response().code(204);
             } catch (e: any) {
                 console.log(e);
