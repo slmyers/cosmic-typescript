@@ -8,7 +8,6 @@ import {
 } from '../domain/Product';
 import { IProductRepo, IProductClient } from '../repository/ProductRepo';
 import { CosmicConfig } from '../../config/cosmic';
-import { IMessageBus } from '../service/MessageBusService';
 
 
 export interface IProductAggregateClient extends IProductClient {
@@ -59,7 +58,6 @@ export class ProductUoW implements IProductUoW {
         @inject('ProductRepo') private repo: IProductRepo,
         @inject('AggregateClient') private client: IProductAggregateClient,
         @inject('CosmicConfig') private config: CosmicConfig,
-        @inject('MessageBusService') private messageBus: IMessageBus,
     ) {}
 
     async release(): Promise<void> {
@@ -92,7 +90,6 @@ export class ProductUoW implements IProductUoW {
             await this.rollback();
             throw e;
         } finally {
-            await this.publishEvents(patches);
             await this.release();
         }
     }
@@ -217,23 +214,6 @@ export class ProductUoW implements IProductUoW {
             await this.client.query('COMMIT');
             this.state = 'commit';
         }
-    }
-
-    async publishEvents(patches: Patch[]): Promise<void> {
-        const promises: Promise<void>[] = [];
-        if (this.state === 'commit') {
-            for (const patch of patches) {
-                switch (patch.path[0]) {
-                case 'events': {
-                    if (patch.op === 'add') {
-                        promises.push(this.messageBus.publish(patch.value));
-                    }
-                    break;
-                }
-                }
-            }
-        }
-        await Promise.all(promises);
     }
 
     private resolveDraft(product): Draft<TrackedProduct> {

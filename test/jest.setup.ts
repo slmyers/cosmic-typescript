@@ -12,7 +12,7 @@ import { IProductEvent } from '../lib/domain/ProductEvent';
 import {enableMapSet, enablePatches} from 'immer';
 import { IProductAggregateClient, ProductUoW, IProductUoW } from '../lib/unit-of-work/ProductUoW';
 import { IProductService, ProductService } from '../lib/service/ProductService';
-import { IMessageBus } from '../lib/service/MessageBusService';
+import { IMessageBus, MessageBusService } from '../lib/service/MessageBusService';
 
 enablePatches();
 enableMapSet();
@@ -25,6 +25,7 @@ parentContainer.bind<IProductRepo>('ProductRepo').to(FakeProductRepo);
 parentContainer.bind<IProduct[]>('fakeProducts').toConstantValue([]);
 parentContainer.bind<IProductUoW>('ProductUoW').to(ProductUoW);
 parentContainer.bind<IProductService>('ProductService').to(ProductService);
+parentContainer.bind<IMessageBus>('MessageBusService').to(MessageBusService);
 
 interface IChance extends Chance.Chance {
     batch: (defaults?: object) => IBatch;
@@ -33,6 +34,7 @@ interface IChance extends Chance.Chance {
     client: (defaults?: object) => IProductAggregateClient;
     messageBus: (defaults?: object) => IMessageBus;
     productEvent: (defaults?: object) => IProductEvent;
+    container: () => Container;
 }
 
 const chance = new Chance() as IChance;
@@ -98,11 +100,10 @@ chance.mixin({
         }, defaults);
         return props;
     },
+    container: function(): Container {
+        return parentContainer.createChild();
+    },
 });
-
-parentContainer.bind<IMessageBus>('MessageBusService').toConstantValue(chance.messageBus());
-
-export { parentContainer, chance };
 
 function bootstrapCosmicConfig(): ICosmicConfig {
     process.env.NODE_ENV = 'test';
@@ -111,3 +112,13 @@ function bootstrapCosmicConfig(): ICosmicConfig {
     const poolConfig = JSON.parse(jsonConfig)[env];
     return new CosmicConfig(poolConfig, env, 'optimistic');
 }
+
+function setupContainer(container: Container, values: any): Container {
+    for (const [key, value] of Object.entries(values)) {
+        container.bind(key).toConstantValue(value);
+    }
+
+    return container;
+}
+
+export { parentContainer, chance, setupContainer };

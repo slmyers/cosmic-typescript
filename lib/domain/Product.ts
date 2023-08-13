@@ -158,6 +158,12 @@ export class Batch implements IBatch {
     }
 }
 
+export function makeBatchWithOrders(batch: IBatch, order: IOrderLine[]): Batch {
+    const b = new Batch(batch.reference, batch.sku, batch.available_quantity, batch.eta);
+    order.forEach(o => b.allocate(new OrderLine(o.orderId, o.sku, o.qty)));
+    return b;
+}
+
 export function allocate(batches: IBatch[], order: OrderLine): string {
     const batch = batches.find(b => b.canAllocate(order));
     if (batch) {

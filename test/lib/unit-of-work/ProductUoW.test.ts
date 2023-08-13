@@ -188,7 +188,7 @@ describe('ProductUoW', () => {
         });
     });
 
-    describe('events', () => {
+    xdescribe('events', () => {
         let product;
         let order;
         let sku;
